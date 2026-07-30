@@ -18,6 +18,8 @@ def main(page: ft.Page):
         {"ad": "Mehmet Demir", "telefon": "5554445566", "bakiye": 120.5}
     ]
 
+    aktif_sepet = [] # {"barkod", "ad", "fiyat", "adet"}
+
     # --- 1. STOK VE ÜRÜN YÖNETİMİ ---
     barkod_input = ft.TextField(label="Barkod No", width=140)
     urun_ad_input = ft.TextField(label="Ürün Adı", width=180)
@@ -131,28 +133,160 @@ def main(page: ft.Page):
         fatura_sonuc
     ], spacing=20)
 
-    # --- 3. HIZLI SATIŞ ---
-    satis_barkod = ft.TextField(label="Ürün Barkodu Okut", width=250)
-    satis_sonuc = ft.Text("", size=16, weight=ft.FontWeight.BOLD)
+    # --- 3. PROFESYONEL HIZLI SATIŞ KASASI ---
+    satis_barkod_input = ft.TextField(label="Barkod Okut / Gir", width=220)
+    sepet_tablo = ft.DataTable(
+        columns=[
+            ft.DataColumn(ft.Text("Ürün Adı")),
+            ft.DataColumn(ft.Text("Fiyat")),
+            ft.DataColumn(ft.Text("Adet")),
+            ft.DataColumn(ft.Text("Toplam")),
+        ],
+        rows=[]
+    )
+    toplam_tutar_text = ft.Text("Genel Toplam: 0.00 TL", size=20, weight=ft.FontWeight.BOLD, color="green")
     
-    def urun_sat(e):
-        bulunan = next((item for item in stok_listesi if item["barkod"] == satis_barkod.value), None)
-        if bulunan and bulunan["adet"] > 0:
-            bulunan["adet"] -= 1
-            satis_sonuc.value = f"Satış Yapıldı: {bulunan['ad']} - {bulunan['fiyat']} TL"
-            stoklari_guncelle()
+    # Ödeme ve Satış Türü Seçenekleri
+    odeme_tipi_dropdown = ft.Dropdown(
+        label="Ödeme Türü",
+        width=150,
+        options=[
+            ft.dropdown.Option("Nakit"),
+            ft.dropdown.Option("Kredi Kartı"),
+        ],
+        value="Nakit"
+    )
+
+    satis_turu_dropdown = ft.Dropdown(
+        label="Fiş / İşlem Türü",
+        width=180,
+        options=[
+            ft.dropdown.Option("Normal Fiş"),
+            ft.dropdown.Option("Cari Hesap (Veresiye)"),
+        ],
+        value="Normal Fiş"
+    )
+
+    cari_secim_dropdown = ft.Dropdown(
+        label="Cari Seçiniz",
+        width=200,
+        options=[],
+        visible=False
+    )
+
+    def cari_listesini_yenile():
+        cari_secim_dropdown.options = [ft.dropdown.Option(c["ad"]) for c in cari_listesi]
+
+    def satis_turu_degisti(e):
+        if satis_turu_dropdown.value == "Cari Hesap (Veresiye)":
+            cari_listesini_yenile()
+            cari_secim_dropdown.visible = True
         else:
-            satis_sonuc.value = "Ürün bulunamadı veya stokta kalmadı!"
-        satis_barkod.value = ""
+            cari_secim_dropdown.visible = False
         page.update()
 
-    satis_btn = ft.ElevatedButton("Satışı Tamamla", on_click=urun_sat)
+    satis_turu_dropdown.on_change = satis_turu_degisti
+
+    satis_mesaj = ft.Text("", size=16, weight=ft.FontWeight.BOLD)
+
+    def sepeti_guncelle():
+        sepet_tablo.rows.clear()
+        genel_toplam = 0.0
+        for item in aktif_sepet:
+            tutar = item["fiyat"] * item["adet"]
+            genel_toplam += tutar
+            sepet_tablo.rows.append(
+                ft.DataRow(cells=[
+                    ft.DataCell(ft.Text(item["ad"])),
+                    ft.DataCell(ft.Text(f"{item['fiyat']} TL")),
+                    ft.DataCell(ft.Text(str(item["adet"]))),
+                    ft.DataCell(ft.Text(f"{tutar:.2f} TL")),
+                ])
+            )
+        toplam_tutar_text.value = f"Genel Toplam: {genel_toplam:.2f} TL"
+        page.update()
+
+    def sepete_urun_ekle(e):
+        if satis_barkod_input.value:
+            bulunan = next((item for item in stok_listesi if item["barkod"] == satis_barkod_input.value), None)
+            if bulunan:
+                if bulunan["adet"] > 0:
+                    # Sepette var mı kontrol et
+                    sepet_item = next((s for s in aktif_sepet if s["barkod"] == bulunan["barkod"]), None)
+                    if sepet_item:
+                        if sepet_item["adet"] < bulunan["adet"]:
+                            sepet_item["adet"] += 1
+                        else:
+                            satis_mesaj.value = "Stokta yeterli ürün yok!"
+                            satis_barkod_input.value = ""
+                            page.update()
+                            return
+                    else:
+                        aktif_sepet.append({
+                            "barkod": bulunan["barkod"],
+                            "ad": bulunan["ad"],
+                            "fiyat": bulunan["fiyat"],
+                            "adet": 1
+                        })
+                    satis_mesaj.value = f"Eklendi: {bulunan['ad']}"
+                else:
+                    satis_mesaj.value = "Ürün stokta tükenmiş!"
+            else:
+                satis_mesaj.value = "Ürün bulunamadı!"
+            satis_barkod_input.value = ""
+            sepeti_guncelle()
+
+    satis_barkod_input.on_submit = sepete_urun_ekle
+
+    def satisi_tamamla_click(e):
+        nonlocal aktif_sepet
+        if not aktif_sepet:
+            satis_mesaj.value = "Sepet boş! Satış yapılamaz."
+            page.update()
+            return
+
+        genel_toplam = sum(item["fiyat"] * item["adet"] for item in aktif_sepet)
+        
+        # Stoktan düş
+        for s_item in aktif_sepet:
+            stok_urun = next((st for st in stok_listesi if st["barkod"] == s_item["barkod"]), None)
+            if stok_urun:
+                stok_urun["adet"] -= s_item["adet"]
+
+        # Eğer cari seçildiyse borcuna ekle
+        if satis_turu_dropdown.value == "Cari Hesap (Veresiye)":
+            secilen_cari_adi = cari_secim_dropdown.value
+            if not secilen_cari_adi:
+                satis_mesaj.value = "Lütfen bir cari müşteri seçin!"
+                page.update()
+                return
+            
+            cari_obj = next((c for c in cari_listesi if c["ad"] == secilen_cari_adi), None)
+            if cari_obj:
+                cari_obj["bakiye"] += genel_toplam
+                satis_mesaj.value = f"✅ Satış Tamamlandı (VERESİYE): {secilen_cari_adi} - {genel_toplam:.2f} TL"
+
+        else:
+            satis_mesaj.value = f"✅ Satış Tamamlandı (NORMAL FİŞ - {odeme_tipi_dropdown.value}): {genel_toplam:.2f} TL"
+
+        aktif_sepet = []
+        sepeti_guncelle()
+        stoklari_guncelle()
+        carileri_guncelle()
+        page.update()
+
+    satis_tamamla_btn = ft.ElevatedButton("Satışı Tamamla", icon=ft.Icons.CHECK, on_click=satisi_tamamla_click, color="white", bgcolor="green")
 
     satis_view = ft.Column([
-        ft.Text("Hızlı Satış Kasası", size=18, weight=ft.FontWeight.BOLD),
-        ft.Row([satis_barkod, satis_btn]),
-        satis_sonuc
-    ], spacing=20)
+        ft.Text("Hızlı Satış ve Kasa Ekranı", size=18, weight=ft.FontWeight.BOLD),
+        ft.Row([satis_barkod_input, ft.ElevatedButton("Sepete Ekle", on_click=sepete_urun_ekle)], wrap=True),
+        sepet_tablo,
+        toplam_tutar_text,
+        ft.Divider(),
+        ft.Row([odeme_tipi_dropdown, satis_turu_dropdown, cari_secim_dropdown], wrap=True),
+        satis_tamamla_btn,
+        satis_mesaj
+    ], spacing=15, scroll=ft.ScrollMode.AUTO)
 
     # --- 4. CARİ TAKİP ---
     cari_ad_input = ft.TextField(label="Müşteri Ad Soyad", width=180)
@@ -184,7 +318,7 @@ def main(page: ft.Page):
                 ft.DataRow(cells=[
                     ft.DataCell(ft.Text(c["ad"])),
                     ft.DataCell(ft.Text(c["telefon"])),
-                    ft.DataCell(ft.Text(f"{c['bakiye']} TL")),
+                    ft.DataCell(ft.Text(f"{c['bakiye']:.2f} TL")),
                     ft.DataCell(ft.IconButton(icon=ft.Icons.DELETE, icon_color="red", on_click=lambda e, t=c["telefon"]: cari_sil(t))),
                 ])
             )
