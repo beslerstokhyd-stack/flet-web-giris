@@ -14,8 +14,6 @@ def main(page: ft.Page):
         {"barkod": "103", "ad": "Ekmek", "fiyat": 10.0, "adet": 100}
     ]
     
-    sepet_listesi = []
-    
     cari_listesi = [
         {"ad": "Ahmet Yılmaz", "telefon": "5551112233", "bakiye": 250.0},
         {"ad": "Mehmet Demir", "telefon": "5554445566", "bakiye": 120.5}
@@ -63,11 +61,11 @@ def main(page: ft.Page):
             fiyat_input.value = ""
             adet_input.value = ""
             stoklari_guncelle()
-            page.snack_bar = ft.SnackBar(ft.Text("Ürün başarıyla eklendi!"), bgcolor=ft.colors.GREEN)
+            page.snack_bar = ft.SnackBar(ft.Text("Ürün başarıyla eklendi!"), bgcolor="green")
             page.snack_bar.open = True
             page.update()
 
-    stok_ekle_btn = ft.ElevatedButton("Ürün Ekle", on_click=urun_ekle, bgcolor=ft.colors.GREEN, color=ft.colors.WHITE)
+    stok_ekle_btn = ft.ElevatedButton("Ürün Ekle", on_click=urun_ekle, bgcolor="green", color="white")
     stoklari_guncelle()
 
     stok_view = ft.Column([
@@ -80,7 +78,7 @@ def main(page: ft.Page):
 
     # --- 2. SAYFA: HIZLI SATIŞ VE KASA ---
     satis_barkod = ft.TextField(label="Ürün Barkodu Okut", width=250)
-    satis_sonuc = ft.Text("", size=16, weight=ft.FontWeight.BOLD, color=ft.colors.BLUE)
+    satis_sonuc = ft.Text("", size=16, weight=ft.FontWeight.BOLD, color="blue")
     
     def urun_sat(e):
         bulunan = next((item for item in stok_listesi if item["barkod"] == satis_barkod.value), None)
@@ -93,7 +91,7 @@ def main(page: ft.Page):
         satis_barkod.value = ""
         page.update()
 
-    satis_btn = ft.ElevatedButton("Satışı Tamamla", on_click=urun_sat, bgcolor=ft.colors.BLUE, color=ft.colors.WHITE)
+    satis_btn = ft.ElevatedButton("Satışı Tamamla", on_click=urun_sat, bgcolor="blue", color="white")
 
     satis_view = ft.Column([
         ft.Text("Hızlı Satış Kasası", size=20, weight=ft.FontWeight.BOLD),
@@ -119,7 +117,7 @@ def main(page: ft.Page):
                 ft.DataRow(cells=[
                     ft.DataCell(ft.Text(c["ad"])),
                     ft.DataCell(ft.Text(c["telefon"])),
-                    ft.DataCell(ft.Text(f"{c['bakiye']} TL", color=ft.colors.RED if c['bakiye'] > 0 else ft.colors.GREEN)),
+                    ft.DataCell(ft.Text(f"{c['bakiye']} TL", color="red" if c['bakiye'] > 0 else "green")),
                 ])
             )
         page.update()
