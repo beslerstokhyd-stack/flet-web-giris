@@ -121,7 +121,7 @@ def main(page: ft.Page):
         cari_tablo
     ], scroll=ft.ScrollMode.AUTO)
 
-    # --- SEKMELER (label kullanıldı) ---
+    # --- SEKMELER ---
     t = ft.Tabs(
         selected_index=0,
         tabs=[
