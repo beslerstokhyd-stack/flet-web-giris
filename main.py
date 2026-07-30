@@ -135,7 +135,6 @@ def main(page: ft.Page):
                 eklenen = int(fatura_adet.value)
                 bulunan["adet"] += eklenen
                 
-                # Tedarikçiye borç ekle (Alınan mal karşılığı)
                 tutar = eklenen * bulunan["fiyat"]
                 tedarikci = next((c for c in cari_listesi if c["ad"] == fatura_tedarikci_dropdown.value), None)
                 if tedarikci:
@@ -181,16 +180,6 @@ def main(page: ft.Page):
             ft.dropdown.Option("Kredi Kartı"),
         ],
         value="Nakit"
-    )
-
-    satis_turu_dropdown = ft.Dropdown(
-        label="Fiş / İşlem Türü",
-        width=180,
-        options=[
-            ft.dropdown.Option("Normal Fiş"),
-            ft.dropdown.Option("Cari Hesap (Veresiye)"),
-        ],
-        value="Normal Fiş"
     )
 
     cari_secim_text = ft.Text("Seçilen Cari: Yok", size=15, weight=ft.FontWeight.BOLD, color="blue")
@@ -239,6 +228,16 @@ def main(page: ft.Page):
         page.update()
 
     cari_sec_btn.on_click = cari_secim_pencere_ac
+
+    satis_turu_dropdown = ft.Dropdown(
+        label="Fiş / İşlem Türü",
+        width=180,
+        options=[
+            ft.dropdown.Option("Normal Fiş"),
+            ft.dropdown.Option("Cari Hesap (Veresiye)"),
+        ],
+        value="Normal Fiş"
+    )
 
     def satis_turu_degisti(e):
         if satis_turu_dropdown.value == "Cari Hesap (Veresiye)":
