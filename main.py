@@ -121,7 +121,7 @@ def main(page: ft.Page):
         cari_tablo
     ], scroll=ft.ScrollMode.AUTO)
 
-    # --- SAYFA İÇERİK YÖNETİMİ ---
+    # --- SAYFA İÇERİK YÖNETİMİ (Güvenli Sekme Yapısı) ---
     icerik_alani = ft.Container(content=satis_view, padding=20, expand=True)
 
     def tab_degisti(e):
@@ -137,10 +137,10 @@ def main(page: ft.Page):
     t = ft.Tabs(
         selected_index=0,
         on_change=tab_degisti,
-        tabs=[
-            ft.Tab(label="Hızlı Satış"),
-            ft.Tab(label="Stok İşlemleri"),
-            ft.Tab(label="Cari Takip"),
+        controls=[
+            ft.Tab(text="Hızlı Satış"),
+            ft.Tab(text="Stok İşlemleri"),
+            ft.Tab(text="Cari Takip"),
         ]
     )
 
