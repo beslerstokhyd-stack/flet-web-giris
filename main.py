@@ -121,13 +121,13 @@ def main(page: ft.Page):
         cari_tablo
     ], scroll=ft.ScrollMode.AUTO)
 
-    # --- SEKMELER ---
+    # --- SEKMELER (label kullanıldı) ---
     t = ft.Tabs(
         selected_index=0,
         tabs=[
-            ft.Tab(text="Hızlı Satış", content=ft.Container(content=satis_view, padding=20)),
-            ft.Tab(text="Stok İşlemleri", content=ft.Container(content=stok_view, padding=20)),
-            ft.Tab(text="Cari Takip", content=ft.Container(content=cari_view, padding=20)),
+            ft.Tab(label="Hızlı Satış", content=ft.Container(content=satis_view, padding=20)),
+            ft.Tab(label="Stok İşlemleri", content=ft.Container(content=stok_view, padding=20)),
+            ft.Tab(label="Cari Takip", content=ft.Container(content=cari_view, padding=20)),
         ],
         expand=1
     )
