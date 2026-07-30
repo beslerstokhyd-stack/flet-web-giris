@@ -4,7 +4,8 @@ def main(page: ft.Page):
     page.title = "Bakkal Otomasyon Sistemi"
     page.vertical_alignment = ft.MainAxisAlignment.START
     page.horizontal_alignment = ft.CrossAxisAlignment.CENTER
-    page.padding = 20
+    page.padding = 10
+    page.scroll = ft.ScrollMode.AUTO
 
     # --- GEÇİCİ VERİLER ---
     stok_listesi = [
@@ -24,9 +25,9 @@ def main(page: ft.Page):
 
     # --- 1. STOK VE ÜRÜN YÖNETİMİ ---
     barkod_input = ft.TextField(label="Barkod No", width=140)
-    urun_ad_input = ft.TextField(label="Ürün Adı", width=180)
-    fiyat_input = ft.TextField(label="Fiyat (TL)", width=100)
-    adet_input = ft.TextField(label="Adet", width=90)
+    urun_ad_input = ft.TextField(label="Ürün Adı", width=160)
+    fiyat_input = ft.TextField(label="Fiyat (TL)", width=90)
+    adet_input = ft.TextField(label="Adet", width=80)
     
     stok_tablo = ft.DataTable(
         columns=[
@@ -34,7 +35,7 @@ def main(page: ft.Page):
             ft.DataColumn(ft.Text("Ürün Adı")),
             ft.DataColumn(ft.Text("Fiyat")),
             ft.DataColumn(ft.Text("Adet")),
-            ft.DataColumn(ft.Text("İşlemler")),
+            ft.DataColumn(ft.Text("İşlem")),
         ],
         rows=[]
     )
@@ -66,7 +67,7 @@ def main(page: ft.Page):
                     ft.DataCell(ft.Row([
                         ft.IconButton(icon=ft.Icons.EDIT, icon_color="blue", tooltip="Düzenle", on_click=lambda e, b=item["barkod"], a=item["ad"], f=item["fiyat"], m=item["adet"]: urun_sec(e, b, a, f, m)),
                         ft.IconButton(icon=ft.Icons.DELETE, icon_color="red", tooltip="Sil", on_click=lambda e, bk=item["barkod"]: urun_sil(bk))
-                    ]))
+                    ], spacing=0))
                 ])
             )
         page.update()
@@ -78,7 +79,7 @@ def main(page: ft.Page):
                 mevcut["ad"] = urun_ad_input.value
                 mevcut["fiyat"] = float(fiyat_input.value) if fiyat_input.value else mevcut["fiyat"]
                 mevcut["adet"] = int(adet_input.value) if adet_input.value else mevcut["adet"]
-                mesaj = "Ürün bilgileri güncellendi!"
+                mesaj = "Ürün güncellendi!"
             else:
                 stok_listesi.append({
                     "barkod": barkod_input.value,
@@ -98,19 +99,18 @@ def main(page: ft.Page):
             page.update()
 
     stok_ekle_btn = ft.ElevatedButton("Kaydet / Güncelle", on_click=urun_ekle_guncelle)
-    stoklari_guncelle()
 
     stok_view = ft.Column([
         ft.Text("Ürün & Stok Yönetimi", size=18, weight=ft.FontWeight.BOLD),
-        ft.Row([barkod_input, urun_ad_input, fiyat_input, adet_input, stok_ekle_btn], wrap=True),
+        ft.Row([barkod_input, urun_ad_input, fiyat_input, adet_input, stok_ekle_btn], wrap=True, spacing=10),
         ft.Divider(),
-        stok_tablo
+        ft.Row([stok_tablo], scroll=ft.ScrollMode.AUTO)
     ], scroll=ft.ScrollMode.AUTO)
 
     # --- 2. FATURA / TEDARİKÇİ MAL GİRİŞİ ---
     fatura_tedarikci_dropdown = ft.Dropdown(
         label="Tedarikçi (Satıcı) Firma Seç",
-        width=250,
+        width=280,
         options=[]
     )
 
@@ -119,9 +119,9 @@ def main(page: ft.Page):
 
     tedarikci_listesini_guncelle()
 
-    fatura_barkod = ft.TextField(label="Ürün Barkodu", width=180)
-    fatura_adet = ft.TextField(label="Fatura Adeti", width=120)
-    fatura_sonuc = ft.Text("", size=16, weight=ft.FontWeight.BOLD)
+    fatura_barkod = ft.TextField(label="Ürün Barkodu", width=160)
+    fatura_adet = ft.TextField(label="Fatura Adeti", width=110)
+    fatura_sonuc = ft.Text("", size=15, weight=ft.FontWeight.BOLD)
 
     def fatura_stok_isle(e):
         if not fatura_tedarikci_dropdown.value:
@@ -140,11 +140,11 @@ def main(page: ft.Page):
                 if tedarikci:
                     tedarikci["bakiye"] += tutar
 
-                fatura_sonuc.value = f"✅ {fatura_tedarikci_dropdown.value} firmasından gelen {eklenen} adet {bulunan['ad']} stoğa eklendi. Borç kaydedildi."
+                fatura_sonuc.value = f"✅ {fatura_tedarikci_dropdown.value} firmasından {eklenen} adet {bulunan['ad']} eklendi, borç kaydedildi."
                 stoklari_guncelle()
                 carileri_guncelle()
             else:
-                fatura_sonuc.value = "⚠️ Bu barkoda ait ürün bulunamadı! Önce Stok İşlemlerinden kaydedin."
+                fatura_sonuc.value = "⚠️ Bu barkod bulunamadı! Önce Stok İşlemlerinden kaydedin."
             fatura_barkod.value = ""
             fatura_adet.value = ""
             page.update()
@@ -153,14 +153,14 @@ def main(page: ft.Page):
 
     fatura_view = ft.Column([
         ft.Text("Fatura ve Tedarikçi Mal Girişi", size=18, weight=ft.FontWeight.BOLD),
-        ft.Text("Tedarikçiden gelen faturaları işleyin ve borç/stok dengesini kurun:", size=14),
+        ft.Text("Tedarikçiden gelen faturaları işleyin ve borç/stok dengesini kurun:", size=13),
         fatura_tedarikci_dropdown,
-        ft.Row([fatura_barkod, fatura_adet, fatura_btn], wrap=True),
+        ft.Row([fatura_barkod, fatura_adet, fatura_btn], wrap=True, spacing=10),
         fatura_sonuc
-    ], spacing=20)
+    ], spacing=15, scroll=ft.ScrollMode.AUTO)
 
     # --- 3. PROFESYONEL HIZLI SATIŞ KASASI ---
-    satis_barkod_input = ft.TextField(label="Barkod Okut / Gir", width=220)
+    satis_barkod_input = ft.TextField(label="Barkod Okut / Gir", width=200)
     sepet_tablo = ft.DataTable(
         columns=[
             ft.DataColumn(ft.Text("Ürün Adı")),
@@ -170,11 +170,11 @@ def main(page: ft.Page):
         ],
         rows=[]
     )
-    toplam_tutar_text = ft.Text("Genel Toplam: 0.00 TL", size=20, weight=ft.FontWeight.BOLD, color="green")
+    toplam_tutar_text = ft.Text("Genel Toplam: 0.00 TL", size=18, weight=ft.FontWeight.BOLD, color="green")
     
     odeme_tipi_dropdown = ft.Dropdown(
         label="Ödeme Türü",
-        width=150,
+        width=140,
         options=[
             ft.dropdown.Option("Nakit"),
             ft.dropdown.Option("Kredi Kartı"),
@@ -182,11 +182,21 @@ def main(page: ft.Page):
         value="Nakit"
     )
 
-    cari_secim_text = ft.Text("Seçilen Cari: Yok", size=15, weight=ft.FontWeight.BOLD, color="blue")
-    cari_sec_btn = ft.ElevatedButton("🔍 Cari Seç", visible=False)
+    satis_turu_dropdown = ft.Dropdown(
+        label="Fiş / İşlem Türü",
+        width=170,
+        options=[
+            ft.dropdown.Option("Normal Fiş"),
+            ft.dropdown.Option("Cari Hesap (Veresiye)"),
+        ],
+        value="Normal Fiş"
+    )
+
+    cari_secim_text = ft.Text("Seçilen Cari: Yok", size=14, weight=ft.FontWeight.BOLD, color="blue")
+    cari_sec_btn = ft.ElevatedButton("🔍 Cari Seç", icon=ft.Icons.SEARCH)
 
     # Cari Arama ve Seçim Penceresi (Dialog)
-    arama_input = ft.TextField(label="Cari Adı veya Telefon ile Ara...", width=350)
+    arama_input = ft.TextField(label="Cari Adı veya Telefon ile Ara...", width=300)
     dialog_cari_tablo = ft.DataTable(
         columns=[ft.DataColumn(ft.Text("Cari Adı")), ft.DataColumn(ft.Text("Telefon")), ft.DataColumn(ft.Text("İşlem"))],
         rows=[]
@@ -217,7 +227,7 @@ def main(page: ft.Page):
 
     cari_secim_dialog = ft.AlertDialog(
         title=ft.Text("Cari Müşteri Listesi ve Arama"),
-        content=ft.Column([arama_input, dialog_cari_tablo], tight=True, scroll=ft.ScrollMode.AUTO),
+        content=ft.Column([arama_input, ft.Row([dialog_cari_tablo], scroll=ft.ScrollMode.AUTO)], tight=True, scroll=ft.ScrollMode.AUTO),
         actions=[ft.TextButton("Kapat", on_click=lambda e: setattr(page.dialog, 'open', False) or page.update())]
     )
 
@@ -229,28 +239,7 @@ def main(page: ft.Page):
 
     cari_sec_btn.on_click = cari_secim_pencere_ac
 
-    satis_turu_dropdown = ft.Dropdown(
-        label="Fiş / İşlem Türü",
-        width=180,
-        options=[
-            ft.dropdown.Option("Normal Fiş"),
-            ft.dropdown.Option("Cari Hesap (Veresiye)"),
-        ],
-        value="Normal Fiş"
-    )
-
-    def satis_turu_degisti(e):
-        if satis_turu_dropdown.value == "Cari Hesap (Veresiye)":
-            cari_sec_btn.visible = True
-            cari_secim_text.visible = True
-        else:
-            cari_sec_btn.visible = False
-            cari_secim_text.visible = False
-        page.update()
-
-    satis_turu_dropdown.on_change = satis_turu_degisti
-
-    satis_mesaj = ft.Text("", size=16, weight=ft.FontWeight.BOLD)
+    satis_mesaj = ft.Text("", size=15, weight=ft.FontWeight.BOLD)
 
     def sepeti_guncelle():
         sepet_tablo.rows.clear()
@@ -321,12 +310,11 @@ def main(page: ft.Page):
                 return
             
             secilen_cari["bakiye"] += genel_toplam
-            satis_mesaj.value = f"✅ Satış Tamamlandı (VERESİYE): {secilen_cari['ad']} - {genel_toplam:.2f} TL"
+            satis_mesaj.value = f"✅ Veresiye Satış Başarılı: {secilen_cari['ad']} - {genel_toplam:.2f} TL"
             secilen_cari = {"ad": "Seçilmedi", "telefon": ""}
             cari_secim_text.value = "Seçilen Cari: Yok"
-
         else:
-            satis_mesaj.value = f"✅ Satış Tamamlandı (NORMAL FİŞ - {odeme_tipi_dropdown.value}): {genel_toplam:.2f} TL"
+            satis_mesaj.value = f"✅ Satış Tamamlandı ({odeme_tipi_dropdown.value}): {genel_toplam:.2f} TL"
 
         aktif_sepet = []
         sepeti_guncelle()
@@ -338,22 +326,22 @@ def main(page: ft.Page):
 
     satis_view = ft.Column([
         ft.Text("Hızlı Satış ve Kasa Ekranı", size=18, weight=ft.FontWeight.BOLD),
-        ft.Row([satis_barkod_input, ft.ElevatedButton("Sepete Ekle", on_click=sepete_urun_ekle)], wrap=True),
-        sepet_tablo,
+        ft.Row([satis_barkod_input, ft.ElevatedButton("Sepete Ekle", on_click=sepete_urun_ekle)], wrap=True, spacing=10),
+        ft.Row([sepet_tablo], scroll=ft.ScrollMode.AUTO),
         toplam_tutar_text,
         ft.Divider(),
-        ft.Row([odeme_tipi_dropdown, satis_turu_dropdown, cari_sec_btn, cari_secim_text], wrap=True),
+        ft.Row([odeme_tipi_dropdown, satis_turu_dropdown, cari_sec_btn, cari_secim_text], wrap=True, spacing=10),
         satis_tamamla_btn,
         satis_mesaj
-    ], spacing=15, scroll=ft.ScrollMode.AUTO)
+    ], spacing=12, scroll=ft.ScrollMode.AUTO)
 
     # --- 4. CARİ TAKİP ---
-    cari_ad_input = ft.TextField(label="Cari Ad Soyad / Firma Adı", width=200)
-    cari_tel_input = ft.TextField(label="Telefon", width=130)
-    cari_bakiye_input = ft.TextField(label="Bakiye", width=90)
+    cari_ad_input = ft.TextField(label="Cari Ad / Firma Adı", width=180)
+    cari_tel_input = ft.TextField(label="Telefon", width=120)
+    cari_bakiye_input = ft.TextField(label="Bakiye", width=80)
     cari_tip_dropdown = ft.Dropdown(
         label="Cari Türü",
-        width=130,
+        width=120,
         options=[ft.dropdown.Option("Müşteri"), ft.dropdown.Option("Tedarikçi")],
         value="Müşteri"
     )
@@ -377,7 +365,7 @@ def main(page: ft.Page):
                 cari_listesi = [x for x in cari_listesi if x["telefon"] != tel]
                 carileri_guncelle()
                 tedarikci_listesini_guncelle()
-                page.snack_bar = ft.SnackBar(ft.Text("Cari kayıt silindi!"))
+                page.snack_bar = ft.SnackBar(ft.Text("Cari silindi!"))
                 page.snack_bar.open = True
                 page.update()
 
@@ -414,13 +402,13 @@ def main(page: ft.Page):
 
     cari_view = ft.Column([
         ft.Text("Cari / Müşteri ve Tedarikçi Yönetimi", size=18, weight=ft.FontWeight.BOLD),
-        ft.Row([cari_ad_input, cari_tel_input, cari_bakiye_input, cari_tip_dropdown, cari_ekle_btn], wrap=True),
+        ft.Row([cari_ad_input, cari_tel_input, cari_bakiye_input, cari_tip_dropdown, cari_ekle_btn], wrap=True, spacing=10),
         ft.Divider(),
-        cari_tablo
+        ft.Row([cari_tablo], scroll=ft.ScrollMode.AUTO)
     ], scroll=ft.ScrollMode.AUTO)
 
     # --- EKRAN YÖNETİMİ ---
-    icerik_alani = ft.Container(content=satis_view, padding=20)
+    icerik_alani = ft.Container(content=satis_view, padding=10)
 
     def sayfa_sec(e, view):
         icerik_alani.content = view
@@ -429,12 +417,12 @@ def main(page: ft.Page):
     menu_bar = ft.Row([
         ft.OutlinedButton("Hızlı Satış", on_click=lambda e: sayfa_sec(e, satis_view)),
         ft.OutlinedButton("Stok İşlemleri", on_click=lambda e: sayfa_sec(e, stok_view)),
-        ft.OutlinedButton("Fatura / Mal Girişi", on_click=lambda e: sayfa_sec(e, fatura_view)),
+        ft.OutlinedButton("Fatura Girişi", on_click=lambda e: sayfa_sec(e, fatura_view)),
         ft.OutlinedButton("Cari Takip", on_click=lambda e: sayfa_sec(e, cari_view)),
-    ], alignment=ft.MainAxisAlignment.CENTER, wrap=True)
+    ], alignment=ft.MainAxisAlignment.CENTER, wrap=True, spacing=5)
 
     page.add(
-        ft.Row([ft.Text("🛒 Bakkal Yönetim Paneli", size=22, weight=ft.FontWeight.BOLD)], alignment=ft.MainAxisAlignment.CENTER),
+        ft.Row([ft.Text("🛒 Bakkal Yönetim Paneli", size=20, weight=ft.FontWeight.BOLD)], alignment=ft.MainAxisAlignment.CENTER),
         menu_bar,
         ft.Divider(),
         icerik_alani
