@@ -30,7 +30,7 @@ def main(page: ft.Page):
             ft.DataColumn(ft.Text("Ürün Adı")),
             ft.DataColumn(ft.Text("Fiyat")),
             ft.DataColumn(ft.Text("Adet")),
-            ft.DataColumn(ft.Text("İşlem")),
+            ft.DataColumn(ft.Text("İşlemler")),
         ],
         rows=[]
     )
@@ -38,7 +38,13 @@ def main(page: ft.Page):
     def stoklari_guncelle():
         stok_tablo.rows.clear()
         for item in stok_listesi:
-            # Her ürüne özel silme butonu
+            def urun_sec(b=item["barkod"], a=item["ad"], f=item["fiyat"], m=item["adet"]):
+                barkod_input.value = b
+                urun_ad_input.value = a
+                fiyat_input.value = str(f)
+                adet_input.value = str(m)
+                page.update()
+
             def urun_sil(b_kodu=item["barkod"]):
                 nonlocal stok_listesi
                 stok_listesi = [x for x in stok_listesi if x["barkod"] != b_kodu]
@@ -49,30 +55,32 @@ def main(page: ft.Page):
 
             stok_tablo.rows.append(
                 ft.DataRow(cells=[
-                    ft.DataCell(ft.Text(item["barkod"])),
-                    ft.DataCell(ft.Text(item["ad"])),
+                    ft.DataCell(ft.Text(item["barkod"]), on_click=lambda e, b=item["barkod"], a=item["ad"], f=item["fiyat"], m=item["adet"]: urun_sec(b, a, f, m)),
+                    ft.DataCell(ft.Text(item["ad"]), on_click=lambda e, b=item["barkod"], a=item["ad"], f=item["fiyat"], m=item["adet"]: urun_sec(b, a, f, m)),
                     ft.DataCell(ft.Text(f"{item['fiyat']} TL")),
                     ft.DataCell(ft.Text(str(item["adet"]))),
-                    ft.DataCell(ft.IconButton(icon=ft.Icons.DELETE, icon_color="red", on_click=lambda e, bk=item["barkod"]: urun_sil(bk))),
+                    ft.DataCell(ft.Row([
+                        ft.IconButton(icon=ft.Icons.EDIT, icon_color="blue", tooltip="Düzenle", on_click=lambda e, b=item["barkod"], a=item["ad"], f=item["fiyat"], m=item["adet"]: urun_sec(b, a, f, m)),
+                        ft.IconButton(icon=ft.Icons.DELETE, icon_color="red", tooltip="Sil", on_click=lambda e, bk=item["barkod"]: urun_sil(bk))
+                    ]))
                 ])
             )
         page.update()
 
-    def urun_ekle(e):
-        if barkod_input.value and urun_ad_input.value and fiyat_input.value and adet_input.value:
-            # Aynı barkod varsa güncelle, yoksa yeni ekle
+    def urun_ekle_guncelle(e):
+        if barkod_input.value and urun_ad_input.value:
             mevcut = next((x for x in stok_listesi if x["barkod"] == barkod_input.value), None)
             if mevcut:
                 mevcut["ad"] = urun_ad_input.value
-                mevcut["fiyat"] = float(fiyat_input.value)
-                mevcut["adet"] = int(adet_input.value)
-                mesaj = "Ürün güncellendi!"
+                mevcut["fiyat"] = float(fiyat_input.value) if fiyat_input.value else mevcut["fiyat"]
+                mevcut["adet"] = int(adet_input.value) if adet_input.value else mevcut["adet"]
+                mesaj = "Ürün bilgileri güncellendi!"
             else:
                 stok_listesi.append({
                     "barkod": barkod_input.value,
                     "ad": urun_ad_input.value,
-                    "fiyat": float(fiyat_input.value),
-                    "adet": int(adet_input.value)
+                    "fiyat": float(fiyat_input.value) if fiyat_input.value else 0.0,
+                    "adet": int(adet_input.value) if adet_input.value else 0
                 })
                 mesaj = "Yeni ürün eklendi!"
 
@@ -85,17 +93,45 @@ def main(page: ft.Page):
             page.snack_bar.open = True
             page.update()
 
-    stok_ekle_btn = ft.ElevatedButton("Kaydet / Güncelle", on_click=urun_ekle)
+    stok_ekle_btn = ft.ElevatedButton("Kaydet / Güncelle", on_click=urun_ekle_guncelle)
     stoklari_guncelle()
 
     stok_view = ft.Column([
-        ft.Text("Ürün & Stok Yönetimi (Ekle / Güncelle / Sil)", size=18, weight=ft.FontWeight.BOLD),
+        ft.Text("Ürün & Stok Yönetimi (Düzenlemek için ürüne tıklayın)", size=18, weight=ft.FontWeight.BOLD),
         ft.Row([barkod_input, urun_ad_input, fiyat_input, adet_input, stok_ekle_btn], wrap=True),
         ft.Divider(),
         stok_tablo
     ], scroll=ft.ScrollMode.AUTO)
 
-    # --- 2. HIZLI SATIŞ ---
+    # --- 2. FATURA / TOPLU STOK GİRİŞİ ---
+    fatura_barkod = ft.TextField(label="Ürün Barkodu", width=200)
+    fatura_adet = ft.TextField(label="Faturadan Gelen Adet", width=180)
+    fatura_sonuc = ft.Text("", size=16, weight=ft.FontWeight.BOLD)
+
+    def fatura_stok_isle(e):
+        if fatura_barkod.value and fatura_adet.value:
+            bulunan = next((item for item in stok_listesi if item["barkod"] == fatura_barkod.value), None)
+            if bulunan:
+                eklenen = int(fatura_adet.value)
+                bulunan["adet"] += eklenen
+                fatura_sonuc.value = f"✅ {bulunan['ad']} ürününe {eklenen} adet eklendi! Yeni toplam stok: {bulunan['adet']}"
+                stoklari_guncelle()
+            else:
+                fatura_sonuc.value = "⚠️ Bu barkoda ait ürün bulunamadı! Önce Stok İşlemlerinden kaydedin."
+            fatura_barkod.value = ""
+            fatura_adet.value = ""
+            page.update()
+
+    fatura_btn = ft.ElevatedButton("Faturadan Stoğa Ekle", on_click=fatura_stok_isle)
+
+    fatura_view = ft.Column([
+        ft.Text("Fatura ve Toplu Mal Girişi", size=18, weight=ft.FontWeight.BOLD),
+        ft.Text("Tedarikçi faturasından gelen ürünleri mevcut stoğa hızlıca ekleyin:", size=14),
+        ft.Row([fatura_barkod, fatura_adet, fatura_btn], wrap=True),
+        fatura_sonuc
+    ], spacing=20)
+
+    # --- 3. HIZLI SATIŞ ---
     satis_barkod = ft.TextField(label="Ürün Barkodu Okut", width=250)
     satis_sonuc = ft.Text("", size=16, weight=ft.FontWeight.BOLD)
     
@@ -118,7 +154,7 @@ def main(page: ft.Page):
         satis_sonuc
     ], spacing=20)
 
-    # --- 3. CARİ TAKİP & MÜŞTERİ EKLEME ---
+    # --- 4. CARİ TAKİP ---
     cari_ad_input = ft.TextField(label="Müşteri Ad Soyad", width=180)
     cari_tel_input = ft.TextField(label="Telefon", width=150)
     cari_bakiye_input = ft.TextField(label="Borç / Bakiye", width=100)
@@ -189,8 +225,9 @@ def main(page: ft.Page):
     menu_bar = ft.Row([
         ft.OutlinedButton("Hızlı Satış", on_click=lambda e: sayfa_sec(e, satis_view)),
         ft.OutlinedButton("Stok İşlemleri", on_click=lambda e: sayfa_sec(e, stok_view)),
+        ft.OutlinedButton("Fatura / Mal Girişi", on_click=lambda e: sayfa_sec(e, fatura_view)),
         ft.OutlinedButton("Cari Takip", on_click=lambda e: sayfa_sec(e, cari_view)),
-    ], alignment=ft.MainAxisAlignment.CENTER)
+    ], alignment=ft.MainAxisAlignment.CENTER, wrap=True)
 
     page.add(
         ft.Row([ft.Text("🛒 Bakkal Yönetim Paneli", size=22, weight=ft.FontWeight.BOLD)], alignment=ft.MainAxisAlignment.CENTER),
