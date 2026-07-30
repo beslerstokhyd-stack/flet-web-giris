@@ -18,7 +18,7 @@ def main(page: ft.Page):
         {"ad": "Mehmet Demir", "telefon": "5554445566", "bakiye": 120.5}
     ]
 
-    aktif_sepet = [] # {"barkod", "ad", "fiyat", "adet"}
+    aktif_sepet = []
 
     # --- 1. STOK VE ÜRÜN YÖNETİMİ ---
     barkod_input = ft.TextField(label="Barkod No", width=140)
@@ -40,7 +40,7 @@ def main(page: ft.Page):
     def stoklari_guncelle():
         stok_tablo.rows.clear()
         for item in stok_listesi:
-            def urun_sec(b=item["barkod"], a=item["ad"], f=item["fiyat"], m=item["adet"]):
+            def urun_sec(e, b=item["barkod"], a=item["ad"], f=item["fiyat"], m=item["adet"]):
                 barkod_input.value = b
                 urun_ad_input.value = a
                 fiyat_input.value = str(f)
@@ -57,12 +57,12 @@ def main(page: ft.Page):
 
             stok_tablo.rows.append(
                 ft.DataRow(cells=[
-                    ft.DataCell(ft.Text(item["barkod"]), on_click=lambda e, b=item["barkod"], a=item["ad"], f=item["fiyat"], m=item["adet"]: urun_sec(b, a, f, m)),
-                    ft.DataCell(ft.Text(item["ad"]), on_click=lambda e, b=item["barkod"], a=item["ad"], f=item["fiyat"], m=item["adet"]: urun_sec(b, a, f, m)),
+                    ft.DataCell(ft.Text(item["barkod"])),
+                    ft.DataCell(ft.Text(item["ad"])),
                     ft.DataCell(ft.Text(f"{item['fiyat']} TL")),
                     ft.DataCell(ft.Text(str(item["adet"]))),
                     ft.DataCell(ft.Row([
-                        ft.IconButton(icon=ft.Icons.EDIT, icon_color="blue", tooltip="Düzenle", on_click=lambda e, b=item["barkod"], a=item["ad"], f=item["fiyat"], m=item["adet"]: urun_sec(b, a, f, m)),
+                        ft.IconButton(icon=ft.Icons.EDIT, icon_color="blue", tooltip="Düzenle", on_click=lambda e, b=item["barkod"], a=item["ad"], f=item["fiyat"], m=item["adet"]: urun_sec(e, b, a, f, m)),
                         ft.IconButton(icon=ft.Icons.DELETE, icon_color="red", tooltip="Sil", on_click=lambda e, bk=item["barkod"]: urun_sil(bk))
                     ]))
                 ])
@@ -99,7 +99,7 @@ def main(page: ft.Page):
     stoklari_guncelle()
 
     stok_view = ft.Column([
-        ft.Text("Ürün & Stok Yönetimi (Düzenlemek için ürüne tıklayın)", size=18, weight=ft.FontWeight.BOLD),
+        ft.Text("Ürün & Stok Yönetimi", size=18, weight=ft.FontWeight.BOLD),
         ft.Row([barkod_input, urun_ad_input, fiyat_input, adet_input, stok_ekle_btn], wrap=True),
         ft.Divider(),
         stok_tablo
@@ -146,7 +146,6 @@ def main(page: ft.Page):
     )
     toplam_tutar_text = ft.Text("Genel Toplam: 0.00 TL", size=20, weight=ft.FontWeight.BOLD, color="green")
     
-    # Ödeme ve Satış Türü Seçenekleri
     odeme_tipi_dropdown = ft.Dropdown(
         label="Ödeme Türü",
         width=150,
@@ -211,7 +210,6 @@ def main(page: ft.Page):
             bulunan = next((item for item in stok_listesi if item["barkod"] == satis_barkod_input.value), None)
             if bulunan:
                 if bulunan["adet"] > 0:
-                    # Sepette var mı kontrol et
                     sepet_item = next((s for s in aktif_sepet if s["barkod"] == bulunan["barkod"]), None)
                     if sepet_item:
                         if sepet_item["adet"] < bulunan["adet"]:
@@ -247,13 +245,11 @@ def main(page: ft.Page):
 
         genel_toplam = sum(item["fiyat"] * item["adet"] for item in aktif_sepet)
         
-        # Stoktan düş
         for s_item in aktif_sepet:
             stok_urun = next((st for st in stok_listesi if st["barkod"] == s_item["barkod"]), None)
             if stok_urun:
                 stok_urun["adet"] -= s_item["adet"]
 
-        # Eğer cari seçildiyse borcuna ekle
         if satis_turu_dropdown.value == "Cari Hesap (Veresiye)":
             secilen_cari_adi = cari_secim_dropdown.value
             if not secilen_cari_adi:
