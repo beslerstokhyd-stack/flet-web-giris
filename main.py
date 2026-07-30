@@ -14,11 +14,13 @@ def main(page: ft.Page):
     ]
     
     cari_listesi = [
-        {"ad": "Ahmet Yılmaz", "telefon": "5551112233", "bakiye": 250.0},
-        {"ad": "Mehmet Demir", "telefon": "5554445566", "bakiye": 120.5}
+        {"ad": "Ahmet Yılmaz (Müşteri)", "telefon": "5551112233", "bakiye": 250.0, "tip": "Müşteri"},
+        {"ad": "Sütaş Gıda A.Ş. (Tedarikçi)", "telefon": "2164445566", "bakiye": 1500.0, "tip": "Tedarikçi"},
+        {"ad": "Mehmet Demir (Müşteri)", "telefon": "5554445566", "bakiye": 120.5, "tip": "Müşteri"}
     ]
 
     aktif_sepet = []
+    secilen_cari = {"ad": "Seçilmedi", "telefon": ""}
 
     # --- 1. STOK VE ÜRÜN YÖNETİMİ ---
     barkod_input = ft.TextField(label="Barkod No", width=140)
@@ -105,30 +107,55 @@ def main(page: ft.Page):
         stok_tablo
     ], scroll=ft.ScrollMode.AUTO)
 
-    # --- 2. FATURA / TOPLU STOK GİRİŞİ ---
-    fatura_barkod = ft.TextField(label="Ürün Barkodu", width=200)
-    fatura_adet = ft.TextField(label="Faturadan Gelen Adet", width=180)
+    # --- 2. FATURA / TEDARİKÇİ MAL GİRİŞİ ---
+    fatura_tedarikci_dropdown = ft.Dropdown(
+        label="Tedarikçi (Satıcı) Firma Seç",
+        width=250,
+        options=[]
+    )
+
+    def tedarikci_listesini_guncelle():
+        fatura_tedarikci_dropdown.options = [ft.dropdown.Option(c["ad"]) for c in cari_listesi if c.get("tip") == "Tedarikçi"]
+
+    tedarikci_listesini_guncelle()
+
+    fatura_barkod = ft.TextField(label="Ürün Barkodu", width=180)
+    fatura_adet = ft.TextField(label="Fatura Adeti", width=120)
     fatura_sonuc = ft.Text("", size=16, weight=ft.FontWeight.BOLD)
 
     def fatura_stok_isle(e):
+        if not fatura_tedarikci_dropdown.value:
+            fatura_sonuc.value = "⚠️ Lütfen faturayı kesen Tedarikçi firmayı seçin!"
+            page.update()
+            return
+
         if fatura_barkod.value and fatura_adet.value:
             bulunan = next((item for item in stok_listesi if item["barkod"] == fatura_barkod.value), None)
             if bulunan:
                 eklenen = int(fatura_adet.value)
                 bulunan["adet"] += eklenen
-                fatura_sonuc.value = f"✅ {bulunan['ad']} ürününe {eklenen} adet eklendi! Yeni toplam stok: {bulunan['adet']}"
+                
+                # Tedarikçiye borç ekle (Alınan mal karşılığı)
+                tutar = eklenen * bulunan["fiyat"]
+                tedarikci = next((c for c in cari_listesi if c["ad"] == fatura_tedarikci_dropdown.value), None)
+                if tedarikci:
+                    tedarikci["bakiye"] += tutar
+
+                fatura_sonuc.value = f"✅ {fatura_tedarikci_dropdown.value} firmasından gelen {eklenen} adet {bulunan['ad']} stoğa eklendi. Borç kaydedildi."
                 stoklari_guncelle()
+                carileri_guncelle()
             else:
                 fatura_sonuc.value = "⚠️ Bu barkoda ait ürün bulunamadı! Önce Stok İşlemlerinden kaydedin."
             fatura_barkod.value = ""
             fatura_adet.value = ""
             page.update()
 
-    fatura_btn = ft.ElevatedButton("Faturadan Stoğa Ekle", on_click=fatura_stok_isle)
+    fatura_btn = ft.ElevatedButton("Faturayı İşle ve Stoğa Ekle", on_click=fatura_stok_isle, color="white", bgcolor="blue")
 
     fatura_view = ft.Column([
-        ft.Text("Fatura ve Toplu Mal Girişi", size=18, weight=ft.FontWeight.BOLD),
-        ft.Text("Tedarikçi faturasından gelen ürünleri mevcut stoğa hızlıca ekleyin:", size=14),
+        ft.Text("Fatura ve Tedarikçi Mal Girişi", size=18, weight=ft.FontWeight.BOLD),
+        ft.Text("Tedarikçiden gelen faturaları işleyin ve borç/stok dengesini kurun:", size=14),
+        fatura_tedarikci_dropdown,
         ft.Row([fatura_barkod, fatura_adet, fatura_btn], wrap=True),
         fatura_sonuc
     ], spacing=20)
@@ -166,22 +193,60 @@ def main(page: ft.Page):
         value="Normal Fiş"
     )
 
-    cari_secim_dropdown = ft.Dropdown(
-        label="Cari Seçiniz",
-        width=200,
-        options=[],
-        visible=False
+    cari_secim_text = ft.Text("Seçilen Cari: Yok", size=15, weight=ft.FontWeight.BOLD, color="blue")
+    cari_sec_btn = ft.ElevatedButton("🔍 Cari Seç", visible=False)
+
+    # Cari Arama ve Seçim Penceresi (Dialog)
+    arama_input = ft.TextField(label="Cari Adı veya Telefon ile Ara...", width=350)
+    dialog_cari_tablo = ft.DataTable(
+        columns=[ft.DataColumn(ft.Text("Cari Adı")), ft.DataColumn(ft.Text("Telefon")), ft.DataColumn(ft.Text("İşlem"))],
+        rows=[]
     )
 
-    def cari_listesini_yenile():
-        cari_secim_dropdown.options = [ft.dropdown.Option(c["ad"]) for c in cari_listesi]
+    def cari_arama_filtrele(e=""):
+        dialog_cari_tablo.rows.clear()
+        arama_metni = arama_input.value.lower() if arama_input.value else ""
+        for c in cari_listesi:
+            if arama_metni in c["ad"].lower() or arama_metni in c["telefon"]:
+                def sec(cari_obj=c):
+                    nonlocal secilen_cari
+                    secilen_cari = cari_obj
+                    cari_secim_text.value = f"Seçilen Cari: {cari_obj['ad']}"
+                    page.dialog.open = False
+                    page.update()
+
+                dialog_cari_tablo.rows.append(
+                    ft.DataRow(cells=[
+                        ft.DataCell(ft.Text(c["ad"])),
+                        ft.DataCell(ft.Text(c["telefon"])),
+                        ft.DataCell(ft.ElevatedButton("Seç", on_click=lambda e, co=c: sec(co)))
+                    ])
+                )
+        page.update()
+
+    arama_input.on_change = cari_arama_filtrele
+
+    cari_secim_dialog = ft.AlertDialog(
+        title=ft.Text("Cari Müşteri Listesi ve Arama"),
+        content=ft.Column([arama_input, dialog_cari_tablo], tight=True, scroll=ft.ScrollMode.AUTO),
+        actions=[ft.TextButton("Kapat", on_click=lambda e: setattr(page.dialog, 'open', False) or page.update())]
+    )
+
+    def cari_secim_pencere_ac(e):
+        cari_arama_filtrele()
+        page.dialog = cari_secim_dialog
+        cari_secim_dialog.open = True
+        page.update()
+
+    cari_sec_btn.on_click = cari_secim_pencere_ac
 
     def satis_turu_degisti(e):
         if satis_turu_dropdown.value == "Cari Hesap (Veresiye)":
-            cari_listesini_yenile()
-            cari_secim_dropdown.visible = True
+            cari_sec_btn.visible = True
+            cari_secim_text.visible = True
         else:
-            cari_secim_dropdown.visible = False
+            cari_sec_btn.visible = False
+            cari_secim_text.visible = False
         page.update()
 
     satis_turu_dropdown.on_change = satis_turu_degisti
@@ -237,7 +302,7 @@ def main(page: ft.Page):
     satis_barkod_input.on_submit = sepete_urun_ekle
 
     def satisi_tamamla_click(e):
-        nonlocal aktif_sepet
+        nonlocal aktif_sepet, secilen_cari
         if not aktif_sepet:
             satis_mesaj.value = "Sepet boş! Satış yapılamaz."
             page.update()
@@ -251,16 +316,15 @@ def main(page: ft.Page):
                 stok_urun["adet"] -= s_item["adet"]
 
         if satis_turu_dropdown.value == "Cari Hesap (Veresiye)":
-            secilen_cari_adi = cari_secim_dropdown.value
-            if not secilen_cari_adi:
-                satis_mesaj.value = "Lütfen bir cari müşteri seçin!"
+            if secilen_cari["ad"] == "Seçilmedi":
+                satis_mesaj.value = "Lütfen cari seçimi yapın!"
                 page.update()
                 return
             
-            cari_obj = next((c for c in cari_listesi if c["ad"] == secilen_cari_adi), None)
-            if cari_obj:
-                cari_obj["bakiye"] += genel_toplam
-                satis_mesaj.value = f"✅ Satış Tamamlandı (VERESİYE): {secilen_cari_adi} - {genel_toplam:.2f} TL"
+            secilen_cari["bakiye"] += genel_toplam
+            satis_mesaj.value = f"✅ Satış Tamamlandı (VERESİYE): {secilen_cari['ad']} - {genel_toplam:.2f} TL"
+            secilen_cari = {"ad": "Seçilmedi", "telefon": ""}
+            cari_secim_text.value = "Seçilen Cari: Yok"
 
         else:
             satis_mesaj.value = f"✅ Satış Tamamlandı (NORMAL FİŞ - {odeme_tipi_dropdown.value}): {genel_toplam:.2f} TL"
@@ -279,21 +343,28 @@ def main(page: ft.Page):
         sepet_tablo,
         toplam_tutar_text,
         ft.Divider(),
-        ft.Row([odeme_tipi_dropdown, satis_turu_dropdown, cari_secim_dropdown], wrap=True),
+        ft.Row([odeme_tipi_dropdown, satis_turu_dropdown, cari_sec_btn, cari_secim_text], wrap=True),
         satis_tamamla_btn,
         satis_mesaj
     ], spacing=15, scroll=ft.ScrollMode.AUTO)
 
     # --- 4. CARİ TAKİP ---
-    cari_ad_input = ft.TextField(label="Müşteri Ad Soyad", width=180)
-    cari_tel_input = ft.TextField(label="Telefon", width=150)
-    cari_bakiye_input = ft.TextField(label="Borç / Bakiye", width=100)
+    cari_ad_input = ft.TextField(label="Cari Ad Soyad / Firma Adı", width=200)
+    cari_tel_input = ft.TextField(label="Telefon", width=130)
+    cari_bakiye_input = ft.TextField(label="Bakiye", width=90)
+    cari_tip_dropdown = ft.Dropdown(
+        label="Cari Türü",
+        width=130,
+        options=[ft.dropdown.Option("Müşteri"), ft.dropdown.Option("Tedarikçi")],
+        value="Müşteri"
+    )
 
     cari_tablo = ft.DataTable(
         columns=[
-            ft.DataColumn(ft.Text("Müşteri Adı")),
+            ft.DataColumn(ft.Text("Cari Adı")),
+            ft.DataColumn(ft.Text("Tür")),
             ft.DataColumn(ft.Text("Telefon")),
-            ft.DataColumn(ft.Text("Borç / Bakiye")),
+            ft.DataColumn(ft.Text("Bakiye")),
             ft.DataColumn(ft.Text("İşlem")),
         ],
         rows=[]
@@ -306,6 +377,7 @@ def main(page: ft.Page):
                 nonlocal cari_listesi
                 cari_listesi = [x for x in cari_listesi if x["telefon"] != tel]
                 carileri_guncelle()
+                tedarikci_listesini_guncelle()
                 page.snack_bar = ft.SnackBar(ft.Text("Cari kayıt silindi!"))
                 page.snack_bar.open = True
                 page.update()
@@ -313,6 +385,7 @@ def main(page: ft.Page):
             cari_tablo.rows.append(
                 ft.DataRow(cells=[
                     ft.DataCell(ft.Text(c["ad"])),
+                    ft.DataCell(ft.Text(c.get("tip", "Müşteri"))),
                     ft.DataCell(ft.Text(c["telefon"])),
                     ft.DataCell(ft.Text(f"{c['bakiye']:.2f} TL")),
                     ft.DataCell(ft.IconButton(icon=ft.Icons.DELETE, icon_color="red", on_click=lambda e, t=c["telefon"]: cari_sil(t))),
@@ -325,12 +398,14 @@ def main(page: ft.Page):
             cari_listesi.append({
                 "ad": cari_ad_input.value,
                 "telefon": cari_tel_input.value,
-                "bakiye": float(cari_bakiye_input.value) if cari_bakiye_input.value else 0.0
+                "bakiye": float(cari_bakiye_input.value) if cari_bakiye_input.value else 0.0,
+                "tip": cari_tip_dropdown.value
             })
             cari_ad_input.value = ""
             cari_tel_input.value = ""
             cari_bakiye_input.value = ""
             carileri_guncelle()
+            tedarikci_listesini_guncelle()
             page.snack_bar = ft.SnackBar(ft.Text("Yeni cari eklendi!"))
             page.snack_bar.open = True
             page.update()
@@ -339,8 +414,8 @@ def main(page: ft.Page):
     carileri_guncelle()
 
     cari_view = ft.Column([
-        ft.Text("Müşteri Cari ve Veresiye Yönetimi", size=18, weight=ft.FontWeight.BOLD),
-        ft.Row([cari_ad_input, cari_tel_input, cari_bakiye_input, cari_ekle_btn], wrap=True),
+        ft.Text("Cari / Müşteri ve Tedarikçi Yönetimi", size=18, weight=ft.FontWeight.BOLD),
+        ft.Row([cari_ad_input, cari_tel_input, cari_bakiye_input, cari_tip_dropdown, cari_ekle_btn], wrap=True),
         ft.Divider(),
         cari_tablo
     ], scroll=ft.ScrollMode.AUTO)
