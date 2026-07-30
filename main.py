@@ -121,20 +121,33 @@ def main(page: ft.Page):
         cari_tablo
     ], scroll=ft.ScrollMode.AUTO)
 
-    # --- SEKMELER ---
+    # --- SAYFA İÇERİK YÖNETİMİ ---
+    icerik_alani = ft.Container(content=satis_view, padding=20, expand=True)
+
+    def tab_degisti(e):
+        index = e.control.selected_index
+        if index == 0:
+            icerik_alani.content = satis_view
+        elif index == 1:
+            icerik_alani.content = stok_view
+        elif index == 2:
+            icerik_alani.content = cari_view
+        page.update()
+
     t = ft.Tabs(
         selected_index=0,
+        on_change=tab_degisti,
         tabs=[
-            ft.Tab(label="Hızlı Satış", content=ft.Container(content=satis_view, padding=20)),
-            ft.Tab(label="Stok İşlemleri", content=ft.Container(content=stok_view, padding=20)),
-            ft.Tab(label="Cari Takip", content=ft.Container(content=cari_view, padding=20)),
-        ],
-        expand=1
+            ft.Tab(label="Hızlı Satış"),
+            ft.Tab(label="Stok İşlemleri"),
+            ft.Tab(label="Cari Takip"),
+        ]
     )
 
     page.add(
         ft.Row([ft.Text("🛒 Bakkal Yönetim Paneli", size=22, weight=ft.FontWeight.BOLD)], alignment=ft.MainAxisAlignment.CENTER),
-        t
+        t,
+        icerik_alani
     )
 
 ft.app(target=main)
