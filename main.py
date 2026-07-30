@@ -182,18 +182,8 @@ def main(page: ft.Page):
         value="Nakit"
     )
 
-    satis_turu_dropdown = ft.Dropdown(
-        label="Fiş / İşlem Türü",
-        width=170,
-        options=[
-            ft.dropdown.Option("Normal Fiş"),
-            ft.dropdown.Option("Cari Hesap (Veresiye)"),
-        ],
-        value="Normal Fiş"
-    )
-
     cari_secim_text = ft.Text("Seçilen Cari: Yok", size=14, weight=ft.FontWeight.BOLD, color="blue")
-    cari_sec_btn = ft.ElevatedButton("🔍 Cari Seç", icon=ft.Icons.SEARCH)
+    cari_sec_btn = ft.ElevatedButton("🔍 Cari Seç", icon=ft.Icons.SEARCH, visible=False)
 
     # Cari Arama ve Seçim Penceresi (Dialog)
     arama_input = ft.TextField(label="Cari Adı veya Telefon ile Ara...", width=300)
@@ -232,12 +222,37 @@ def main(page: ft.Page):
     )
 
     def cari_secim_pencere_ac(e):
+        arama_input.value = "" # Açıldığında arama kutusunu sıfırla ki hepsi listelensin
         cari_arama_filtrele()
         page.dialog = cari_secim_dialog
         cari_secim_dialog.open = True
         page.update()
 
     cari_sec_btn.on_click = cari_secim_pencere_ac
+
+    satis_turu_dropdown = ft.Dropdown(
+        label="Fiş / İşlem Türü",
+        width=170,
+        options=[
+            ft.dropdown.Option("Normal Fiş"),
+            ft.dropdown.Option("Cari Hesap (Veresiye)"),
+        ],
+        value="Normal Fiş"
+    )
+
+    def satis_turu_degisti(e):
+        if satis_turu_dropdown.value == "Cari Hesap (Veresiye)":
+            cari_sec_btn.visible = True
+            cari_secim_text.visible = True
+        else:
+            cari_sec_btn.visible = False
+            cari_secim_text.visible = False
+            secilen_cari.clear()
+            secilen_cari.update({"ad": "Seçilmedi", "telefon": ""})
+            cari_secim_text.value = "Seçilen Cari: Yok"
+        page.update()
+
+    satis_turu_dropdown.on_change = satis_turu_degisti
 
     satis_mesaj = ft.Text("", size=15, weight=ft.FontWeight.BOLD)
 
