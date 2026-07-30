@@ -121,32 +121,23 @@ def main(page: ft.Page):
         cari_tablo
     ], scroll=ft.ScrollMode.AUTO)
 
-    # --- SAYFA İÇERİK YÖNETİMİ ---
-    icerik_alani = ft.Container(content=satis_view, padding=20, expand=True)
+    # --- EKRAN YÖNETİMİ ---
+    icerik_alani = ft.Container(content=satis_view, padding=20)
 
-    def tab_degisti(e):
-        index = e.control.selected_index
-        if index == 0:
-            icerik_alani.content = satis_view
-        elif index == 1:
-            icerik_alani.content = stok_view
-        elif index == 2:
-            icerik_alani.content = cari_view
+    def sayfa_sec(e, view):
+        icerik_alani.content = view
         page.update()
 
-    t = ft.Tabs(
-        selected_index=0,
-        on_change=tab_degisti,
-        controls=[
-            ft.Tab(label="Hızlı Satış"),
-            ft.Tab(label="Stok İşlemleri"),
-            ft.Tab(label="Cari Takip"),
-        ]
-    )
+    menu_bar = ft.Row([
+        ft.OutlinedButton("Hızlı Satış", on_click=lambda e: sayfa_sec(e, satis_view)),
+        ft.OutlinedButton("Stok İşlemleri", on_click=lambda e: sayfa_sec(e, stok_view)),
+        ft.OutlinedButton("Cari Takip", on_click=lambda e: sayfa_sec(e, cari_view)),
+    ], alignment=ft.MainAxisAlignment.CENTER)
 
     page.add(
         ft.Row([ft.Text("🛒 Bakkal Yönetim Paneli", size=22, weight=ft.FontWeight.BOLD)], alignment=ft.MainAxisAlignment.CENTER),
-        t,
+        menu_bar,
+        ft.Divider(),
         icerik_alani
     )
 
